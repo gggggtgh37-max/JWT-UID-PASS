@@ -289,9 +289,9 @@ def get_jwt_token():
             }
 
         response_payload = {
-            "Developer": "Riduanul Islam",
-            "TelegramBot": "https://t.me/AutoGenNarutoSpinOB55BOT",
-            "TelegramChannel": "https://t.me/RiduanOfficialBD",
+            "Developer": "TUFAN FF",
+            "TelegramBot": "https://t.me/TUFANFF95",
+            "TelegramChannel": "https://t.me/TGCHATS5",
             "PlayerInfo": player_info,
             "AuthInfo": {
                 "OpenID": token_data.get("open_id"),
@@ -301,7 +301,7 @@ def get_jwt_token():
                 "Expiration_Time": expire_time,
                 "Generation_Time": token_data.get("time")
             },
-            "JWT_Token": jwt_token
+            "token": jwt_token
         }
 
         return make_json_response(response_payload, 200)
