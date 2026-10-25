@@ -1,353 +1,315 @@
-import os
-import sys
+import time
 import json
 import base64
-import ssl
-import gzip
-import time
-import http.client
-import urllib3
-import requests
-from io import BytesIO
 from datetime import datetime
+import httpx
+from flask import Flask, request, Response
+from flask_cors import CORS
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
-from flask import Flask, request, jsonify
+from google.protobuf import json_format
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import descriptor_pool as _descriptor_pool
+from google.protobuf import runtime_version as _runtime_version
+from google.protobuf import symbol_database as _symbol_database
+from google.protobuf.internal import builder as _builder
+from google.protobuf.message import Message
 
-# ── Same folder import (Vercel / local both work) ──
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_runtime_version.ValidateProtobufRuntimeVersion(
+    _runtime_version.Domain.PUBLIC, 6, 30, 0, "", "FreeFire.proto",
+)
 
-import MajoRLoGinrEs_pb2
+_sym_db = _symbol_database.Default()
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x0e\x46reeFire.proto"c\n\x08LoginReq\x12\x0f\n\x07open_id\x18\x16 \x01(\t'
+    b'\x12\x14\n\x0copen_id_type\x18\x17 \x01(\t\x12\x13\n\x0blogin_token\x18\x1d '
+    b'\x01(\t\x12\x1b\n\x13orign_platform_type\x18\x63 \x01(\t"]\n\x10\x42lacklist'
+    b'InfoRes\x12\x1e\n\nban_reason\x18\x01 \x01(\x0e\x32\n.BanReason\x12\x17\n'
+    b'\x0f\x65xpire_duration\x18\x02 \x01(\r\x12\x10\n\x08\x62\x61n_time\x18\x03 '
+    b'\x01(\r"f\n\x0eLoginQueueInfo\x12\r\n\x05\x61llow\x18\x01 \x01(\x08\x12'
+    b'\x16\n\x0equeue_position\x18\x02 \x01(\r\x12\x16\n\x0eneed_wait_secs\x18'
+    b'\x03 \x01(\r\x12\x15\n\rqueue_is_full\x18\x04 \x01(\x08"\xa0\x03\n\x08'
+    b'LoginRes\x12\x12\n\naccount_id\x18\x01 \x01(\x04\x12\x13\n\x0block_region'
+    b'\x18\x02 \x01(\t\x12\x13\n\x0bnoti_region\x18\x03 \x01(\t\x12\x11\n\tip_'
+    b'region\x18\x04 \x01(\t\x12\x19\n\x11\x61gora_environment\x18\x05 \x01(\t'
+    b'\x12\x19\n\x11new_active_region\x18\x06 \x01(\t\x12\x19\n\x11recommend_'
+    b'regions\x18\x07 \x03(\t\x12\r\n\x05token\x18\x08 \x01(\t\x12\x0b\n\x03ttl'
+    b'\x18\t \x01(\r\x12\x12\n\nserver_url\x18\n \x01(\t\x12\x16\n\x0e\x65mul'
+    b'ator_score\x18\x0b \x01(\r\x12$\n\tblacklist\x18\x0c \x01(\x0b\x32\x11.'
+    b'BlacklistInfoRes\x12#\n\nqueue_info\x18\r \x01(\x0b\x32\x0f.LoginQueue'
+    b'Info\x12\x0e\n\x06tp_url\x18\x0e \x01(\t\x12\x15\n\rapp_server_id\x18'
+    b'\x0f \x01(\r\x12\x0f\n\x07\x61no_url\x18\x10 \x01(\t\x12\x0f\n\x07ip_city'
+    b'\x18\x11 \x01(\t\x12\x16\n\x0eip_subdivision\x18\x12 \x01(\t*\xa8\x01\n'
+    b'\tBanReason\x12\x16\n\x12\x42\x41N_REASON_UNKNOWN\x10\x00\x12\x1b\n\x17'
+    b'\x42\x41N_REASON_IN_GAME_AUTO\x10\x01\x12\x15\n\x11\x42\x41N_REASON_'
+    b'REFUND\x10\x02\x12\x15\n\x11\x42\x41N_REASON_OTHERS\x10\x03\x12\x16\n'
+    b'\x12\x42\x41N_REASON_SKINMOD\x10\x04\x12 \n\x1b\x42\x41N_REASON_IN_GAME'
+    b'_AUTO_NEW\x10\xf6\x07\x62\x06proto3'
+)
+
+_globals = globals()
+_builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "FreeFire_pb2", _globals)
+if not _descriptor._USE_C_DESCRIPTORS:
+    DESCRIPTOR._loaded_options = None
+    _globals["_BANREASON"]._serialized_start = 738
+    _globals["_BANREASON"]._serialized_end = 906
+    _globals["_LOGINREQ"]._serialized_start = 18
+    _globals["_LOGINREQ"]._serialized_end = 117
+    _globals["_BLACKLISTINFORES"]._serialized_start = 119
+    _globals["_BLACKLISTINFORES"]._serialized_end = 212
+    _globals["_LOGINQUEUEINFO"]._serialized_start = 214
+    _globals["_LOGINQUEUEINFO"]._serialized_end = 316
+    _globals["_LOGINRES"]._serialized_start = 319
+    _globals["_LOGINRES"]._serialized_end = 735
+
+LoginReq = _globals["LoginReq"]
+LoginRes = _globals["LoginRes"]
+
+MAIN_KEY = base64.b64decode("WWcmdGMlREV1aDYlWmNeOA==")
+MAIN_IV = base64.b64decode("Nm95WkRyMjJFM3ljaGpNJQ==")
+RELEASEVERSION = "OB55"
+USERAGENT = "UnityPlayer/2018.4.12f1 (UnityWebRequest/1.0, libcurl/8.5.0-DEV)"
+LOGIN_URL = "https://loginbp.ppmainecoonghj.com/"
+SECRET_KEY = b"1e5898ccb8dfdd921f9bdea848768b64a201"
+
+HTTP_LIMITS = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+HTTP_TIMEOUT = httpx.Timeout(15.0, connect=5.0)
+_http_client = httpx.Client(limits=HTTP_LIMITS, timeout=HTTP_TIMEOUT)
 
 app = Flask(__name__)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+app.json.sort_keys = False
+CORS(app)
 
-CREDIT = {"dev": "TUFANFF95", "tg": "@TGCHATS5"}
+def pad(text: bytes) -> bytes:
+    padding_length = AES.block_size - (len(text) % AES.block_size)
+    return text + bytes([padding_length] * padding_length)
 
-# ============================================================
-# CONFIG
-# ============================================================
-MajorLoginHost  = "loginbp.ppmainecoonghj.com"
-MajorLoginPath  = "/MajorLogin"
-FreeFireVersion = "OB55"
+def aes_cbc_encrypt(key: bytes, iv: bytes, plaintext: bytes) -> bytes:
+    return AES.new(key, AES.MODE_CBC, iv).encrypt(pad(plaintext))
 
-GUEST_URL     = "https://100067.connect.garena.com/api/v2/oauth/guest/token:grant"
-CLIENT_ID     = 100067
-CLIENT_SECRET = "2ee44819e9b4598845141067b281621874d0d5d7af9d8f7e00c1e54715b7d1e3"
+def json_to_proto(json_data: str, proto_message: Message) -> bytes:
+    json_format.ParseDict(json.loads(json_data), proto_message)
+    return proto_message.SerializeToString()
 
-AES_KEY = bytes([89, 103, 38, 116, 99, 37, 68, 69, 117, 104, 54, 37, 90, 99, 94, 56])
-AES_IV  = bytes([54, 111, 121, 90, 68, 114, 50, 50, 69, 51, 121, 99, 104, 106, 77, 37])
-
-RESPONSE_HEADER_LEN = 64
-DEFAULT_REGION      = "IND"
-DEFAULT_LANG        = "bn"
-
-
-# ============================================================
-# PROTOBUF ENCODER
-# ============================================================
-def encode_varint(num: int) -> bytes:
-    if num < 0:
-        raise ValueError("Number must be non-negative")
-    out = []
-    while True:
-        b = num & 0x7F
-        num >>= 7
-        if num:
-            b |= 0x80
-        out.append(b)
-        if not num:
-            break
-    return bytes(out)
-
-
-def create_field(num, val):
-    if isinstance(val, bool):
-        return encode_varint((num << 3) | 0) + encode_varint(int(val))
-    if isinstance(val, int):
-        return encode_varint((num << 3) | 0) + encode_varint(val)
-    if isinstance(val, (str, bytes)):
-        v = val.encode() if isinstance(val, str) else val
-        return encode_varint((num << 3) | 2) + encode_varint(len(v)) + v
-    if isinstance(val, dict):
-        nested = create_packet(val)
-        return encode_varint((num << 3) | 2) + encode_varint(len(nested)) + nested
-    return b""
-
-
-def create_packet(fields: dict) -> bytes:
-    return b"".join(create_field(k, v) for k, v in fields.items())
-
-
-# ============================================================
-# AES-CBC
-# ============================================================
-def encrypt_api(plain_hex: str) -> str:
-    plain  = bytes.fromhex(plain_hex)
-    cipher = AES.new(AES_KEY, AES.MODE_CBC, AES_IV)
-    return cipher.encrypt(pad(plain, AES.block_size)).hex()
-
-
-def _aes_decrypt(data: bytes) -> bytes:
+def try_parse_login_res(data: bytes):
     try:
-        cipher = AES.new(AES_KEY, AES.MODE_CBC, AES_IV)
-        dec = cipher.decrypt(data)
-        padlen = dec[-1]
-        if 1 <= padlen <= 16 and all(b == padlen for b in dec[-padlen:]):
-            dec = dec[:-padlen]
-        return dec
-    except Exception:
-        return b""
-
-
-# ============================================================
-# RESPONSE DECODER
-# ============================================================
-def decode_response(resp: bytes):
-    def _try_parse(blob: bytes):
-        if not blob:
-            return None
-        try:
-            m = MajoRLoGinrEs_pb2.MajorLoginRes()
-            m.ParseFromString(blob)
-            if m.account_id > 0 and (m.lock_region or m.noti_region or m.token):
-                return m
-        except Exception:
-            pass
-        return None
-
-    m = _try_parse(resp)
-    if m:
-        return m, "plaintext proto", resp
-
-    if len(resp) > RESPONSE_HEADER_LEN:
-        m = _try_parse(resp[RESPONSE_HEADER_LEN:])
-        if m:
-            return m, f"plaintext proto (skip {RESPONSE_HEADER_LEN}B sig)", resp[RESPONSE_HEADER_LEN:]
-
-    if len(resp) >= 16 and len(resp) % 16 == 0:
-        dec = _aes_decrypt(resp)
-        if dec:
-            m = _try_parse(dec)
-            if m:
-                return m, "AES-CBC", dec
-
-            if len(dec) > RESPONSE_HEADER_LEN:
-                m = _try_parse(dec[RESPONSE_HEADER_LEN:])
-                if m:
-                    return m, f"AES-CBC (skip {RESPONSE_HEADER_LEN}B sig)", dec[RESPONSE_HEADER_LEN:]
-
-    return None, "unknown", resp
-
-
-# ============================================================
-# JWT DECODER
-# ============================================================
-def decode_jwt(token: str) -> dict:
-    try:
-        if not token or not isinstance(token, str):
-            return {}
-        parts = token.split(".")
-        if len(parts) != 3:
-            return {}
-        payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
-        raw = base64.urlsafe_b64decode(payload_b64)
-        return json.loads(raw.decode("utf-8"))
-    except Exception:
-        return {}
-
-
-# ============================================================
-# BUILD MajorLogin REQUEST BODY
-# ============================================================
-def build_major_login_body(access_token: str, open_id: str,
-                           region: str = DEFAULT_REGION,
-                           lang: str = DEFAULT_LANG) -> bytes:
-    fields = {
-        3:  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        4:  "free fire",
-        5:  1,
-        7:  "1.132.4",
-        8:  "Android OS 15 / API-35 (AP3A.240617.008/T.R4T2.24e2a71-650ec)",
-        9:  "Handheld",
-        10: "airtel now cirkle",
-        11: "WIFI",
-        12: 1666,
-        13: 750,
-        14: "360",
-        15: "ARM64 FP ASIMD AES | 2000 | 8",
-        16: 7723,
-        17: "Mali-G52 MC2",
-        18: "OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04",
-        19: "Google|3744f365-78fe-424a-871e-f77a0a095356",
-        20: "103.109.214.50",
-        21: lang,
-        22: open_id,
-        23: "8",
-        24: "Handheld",
-        25: "realme RMX3710",
-        26: region,
-        29: access_token,
-        30: 1,
-        41: "airtel now cirkle",
-        42: "WIFI",
-        57: "7428b253defc164018c604a1ebbfebdf",
-        60: 225554,
-        61: 155321,
-        62: 733,
-        64: 155845,
-        65: 225554,
-        66: 155845,
-        67: 225554,
-        73: 2,
-        74: "/data/app/~~ln8dFa29BUuPBtG4A-WwXQ==/com.dts.freefireth-tXx7bnxvKbykwJzwnEHs2Q==/lib/arm64",
-        76: 1,
-        77: "b8e0cd5e295eee42f5860d3c86e483dd|/data/app/~~ln8dFa29BUuPBtG4A-WwXQ==/com.dts.freefireth-tXx7bnxvKbykwJzwnEHs2Q==/base.apk",
-        78: 3,
-        79: 2,
-        81: "64",
-        83: "2019121229",
-        85: 3,
-        86: "OpenGLES2",
-        87: 8191,
-        88: 8,
-        92: 9754,
-        93: "android",
-        94: "KqsHT+PFj/2sTPjf+unI9C5rnnStUzOFVqOADw9TI8tgL2bTnmzrBM/dEzyqy4BtAVua+w9mgLRIMrjXa67/qXm0pz5uQWsxC6sd8Um7OmMNHRmy",
-        95: 111207,
-        96: '{"cur_rate":[60,45,90],"support_etc2":false}',
-        97: 1,
-        99: "4",
-        100: "4",
-        102: "4455414f055f5f0336",
-        104: 52972,
-        105: 1,
-        106: "https://dl-bs.ggpolarbear.com/live/ABHotUpdates/|https://core-bs.ggpolarbear.com/live/ABHotUpdates/|6b2078db9d22dd98f8e9386a39af8462",
-        107: "c8e41b7a93f02d56e1a94c7b8203f5d1",
-    }
-    return create_packet(fields)
-
-
-# ============================================================
-# GARENA GUEST TOKEN
-# ============================================================
-def get_access_token(uid, password):
-    headers = {
-        "User-Agent":   "GarenaMSDK/4.0.42(M2006C3LII ;Android 10;en;IN;app 1.126.2 2019120816;)",
-        "Accept":       "application/json",
-        "Content-Type": "application/json; charset=utf-8",
-        "Connection":   "Keep-Alive",
-    }
-    payload = {
-        "client_id":     CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "client_type":   2,
-        "password":      password,
-        "response_type": "token",
-        "uid":           int(uid),
-    }
-    try:
-        r = requests.post(GUEST_URL, headers=headers, json=payload,
-                          verify=False, timeout=8)
-        if r.status_code == 200:
-            j = r.json()
-            if j.get("code") == 0:
-                d = j.get("data", {}) or {}
-                return d.get("access_token"), d.get("open_id")
+        msg = LoginRes()
+        msg.ParseFromString(data)
+        if msg.account_id and msg.account_id > 0:
+            return json.loads(json_format.MessageToJson(msg))
     except Exception:
         pass
-    return None, None
+    return None
 
+def extract_login_res(raw: bytes) -> dict:
+    parsed = try_parse_login_res(raw)
+    if parsed:
+        return parsed
 
-# ============================================================
-# MAJOR LOGIN REQUEST
-# ============================================================
-def major_login_request(access_token, open_id,
-                        region=DEFAULT_REGION, lang=DEFAULT_LANG):
-    try:
-        ob        = FreeFireVersion
-        plaintext = build_major_login_body(access_token, open_id, region, lang)
-        body      = bytes.fromhex(encrypt_api(plaintext.hex()))
+    idx = 0
+    while True:
+        idx = raw.find(b"\x08", idx)
+        if idx == -1:
+            break
+        parsed = try_parse_login_res(raw[idx:])
+        if parsed:
+            return parsed
+        idx += 1
 
-        ctx  = ssl._create_unverified_context()
-        conn = http.client.HTTPSConnection(MajorLoginHost, context=ctx, timeout=8)
-        conn.request("POST", MajorLoginPath, body=body, headers={
-            'User-Agent':       'UnityPlayer/2018.4.12f1 (UnityWebRequest/1.0, libcurl/8.5.0-DEV)',
-            'Accept':           '*/*',
-            'Accept-Encoding':  'deflate, gzip',
-            'Authorization':    'Bearer',
-            'X-Ga':             'v1 1',
-            'X-Ga-Sv':          '1789556611',
-            'Releaseversion':   ob,
-            'Content-Type':     'application/x-www-form-urlencoded',
-            'X-Unity-Version':  '2018.4.12f1',
-        })
+    jwt_marker = raw.find(b"eyJhbGciOiJIUzI1NiIs")
+    if jwt_marker != -1:
+        for i in range(jwt_marker - 1, max(jwt_marker - 300, -1), -1):
+            if raw[i] == 0x42:
+                parsed = try_parse_login_res(raw[i:])
+                if parsed:
+                    return parsed
+                break
 
-        resp = conn.getresponse()
-        raw  = resp.read()
-        if resp.getheader("Content-Encoding") == "gzip":
-            with gzip.GzipFile(fileobj=BytesIO(raw)) as f:
-                raw = f.read()
-        conn.close()
+    raise Exception(f"Could not parse LoginRes. Raw: {raw[:200]}")
 
-        if resp.status in (200, 201):
-            return raw, None
-        return None, f"HTTP {resp.status}: {raw[:120].decode('utf-8', 'replace')}"
-    except Exception as e:
-        return None, str(e)
+def get_access_token(account: str):
+    url = "https://ffmconnect.live.gop.garenanow.com/oauth/guest/token/grant"
+    payload = (
+        account
+        + "&response_type=token&client_type=2"
+        + "&client_secret=2ee44819e9b4598845141067b281621874d0d5d7af9d8f7e00c1e54715b7d1e3"
+        + "&client_id=100067"
+    )
+    headers = {
+        "User-Agent": USERAGENT,
+        "Connection": "Keep-Alive",
+        "Accept-Encoding": "gzip",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    resp = _http_client.post(url, data=payload, headers=headers)
+    data = resp.json()
+    return data.get("access_token", "0"), data.get("open_id", "0")
 
-
-# ============================================================
-# ROUTE — ONLY /token (lolo.py style response)
-# ============================================================
-@app.get("/token")
-def api_token():
+def generate_jwt_token(uid: str, password: str):
     start_time = time.time()
 
-    uid      = request.args.get("uid", "").strip()
-    password = request.args.get("password", "").strip()
+    token_val, open_id = get_access_token(f"uid={uid}&password={password}")
+    if token_val == "0" or open_id == "0":
+        raise Exception("Invalid UID or Password — access token not received")
 
-    if not uid or not password:
-        return jsonify({"status": "error", "message": "Missing uid or password"}), 400
+    body = json.dumps({
+        "open_id": open_id,
+        "open_id_type": "4",
+        "login_token": token_val,
+        "orign_platform_type": "4",
+    })
+    proto_bytes = json_to_proto(body, LoginReq())
+    payload = aes_cbc_encrypt(MAIN_KEY, MAIN_IV, proto_bytes)
 
-    if not uid.isdigit() or len(uid) < 8:
-        return jsonify({"status": "error", "message": "Invalid UID format"}), 400
+    headers = {
+        "User-Agent": USERAGENT,
+        "Accept": "*/*",
+        "Accept-Encoding": "deflate, gzip",
+        "X-Ga-Sv": "1789534056",
+        "Authorization": "Bearer",
+        "X-Ga": "v1 1",
+        "Releaseversion": RELEASEVERSION,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Unity-Version": "2018.4.12f1",
+        "PlAy_VeR": "1.132.1",
+        "Ob_VeR": RELEASEVERSION,
+    }
 
-    access_token, open_id = get_access_token(uid, password)
-    if not access_token or not open_id:
-        return jsonify({"status": "error", "message": "OAuth failed"}), 400
+    resp = _http_client.post(f"{LOGIN_URL}MajorLogin", data=payload, headers=headers)
+    msg = extract_login_res(resp.content)
 
-    raw, err = major_login_request(access_token, open_id)
-    if not raw:
-        return jsonify({
-            "status": "error",
-            "message": err or "JWT generation failed"
-        }), 400
-
-    res, mode, _ = decode_response(raw)
-    if not res or not res.token:
-        return jsonify({
-            "status": "error",
-            "message": "No JWT token received",
-            "decode_mode": mode
-        }), 400
-
-    jwt_payload = decode_jwt(res.token)
-    real_uid = str(jwt_payload.get("account_id", res.account_id or "N/A"))
     elapsed = time.time() - start_time
 
-    return jsonify({
-        "status":       "success",
-        "real_uid":     real_uid,
-        "access_token": access_token,
-        "open_id":      open_id,
-        "token":        res.token,
-        "time":         f"{elapsed:.2f}s",
-    }), 200
+    return {
+        "access_token": token_val,
+        "open_id": open_id,
+        "real_uid": str(msg.get("accountId", "")),
+        "status": "success",
+        "time": f"{elapsed:.2f}s",
+        "token": f"{msg.get('token', '')}",
+    }
 
+def decode_nickname(encoded: str) -> str:
+    try:
+        raw = base64.b64decode(encoded)
+        dec = bytearray()
+        for i, b in enumerate(raw):
+            dec.append(b ^ SECRET_KEY[i % len(SECRET_KEY)])
+        return dec.decode('utf-8', errors='replace')
+    except Exception as e:
+        return f"[DECODE_ERROR: {e}]"
 
-# ── Vercel / local ──
+def decode_jwt(token: str):
+    try:
+        parts = token.split('.')
+        if len(parts) != 3:
+            return {"error": "Invalid JWT format"}
+        payload_b64 = parts[1]
+        payload_b64 += '=' * ((4 - len(payload_b64) % 4) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64).decode('utf-8'))
+        
+        if 'nickname' in payload and isinstance(payload['nickname'], str):
+            payload['nickname'] = decode_nickname(payload['nickname'])
+        
+        return payload
+    except Exception as e:
+        return {"error": str(e)}
+
+def format_timestamp(ts):
+    if ts:
+        try:
+            return datetime.fromtimestamp(ts).strftime('%d %B %Y, %I:%M:%S %p')
+        except Exception:
+            return "Unknown"
+    return "Unknown"
+
+def make_json_response(data, status_code=200):
+    json_str = json.dumps(data, sort_keys=False, indent=2, ensure_ascii=False)
+    return Response(json_str, status=status_code, mimetype='application/json')
+
+@app.route("/", methods=["GET"])
+def index():
+    response_payload = {
+        "DeveloperInfo": {
+            "Developer": "Riduanul Islam",
+            "TelegramBot": "https://t.me/RiduanCodexBot",
+            "TelegramChannel": "https://t.me/RiduanOfficialBD"
+        },
+        "API_Usage_Guide": {
+            "Project": "Welcome to Riduan Codex Free Fire Token API",
+            "Status": "Active",
+
+            "API_Format": {
+                "Generate_Token": "/token?uid=[uid]&password=[password]"
+            },
+            "ExampleUsage": "/token?uid=18097039025&password=yourpass"
+        }
+    }
+    return make_json_response(response_payload, 200)
+
+@app.route("/token", methods=["GET"])
+def get_jwt_token():
+    uid = request.args.get("uid")
+    password = request.args.get("password")
+
+    if not uid or not password:
+        return make_json_response({
+            "status": "error",
+            "error": "Both uid and password parameters are required"
+        }, 400)
+
+    try:
+        token_data = generate_jwt_token(uid, password)
+        jwt_token = token_data.get("token")
+        
+        decoded_info = decode_jwt(jwt_token)
+        
+        expire_time = "Unknown"
+        lock_region_time = "Unknown"
+
+        if isinstance(decoded_info, dict) and "error" not in decoded_info:
+            lock_region_time = format_timestamp(decoded_info.get("lock_region_time"))
+            expire_time = format_timestamp(decoded_info.get("exp"))
+            
+            player_info = {
+                "nickname": decoded_info.get("nickname", "Unknown"),
+                "account_id": decoded_info.get("account_id", token_data.get("real_uid", uid)),
+                "external_uid": decoded_info.get("external_uid", "Unknown"),
+                "country_code": decoded_info.get("country_code", "Unknown"),
+                "noti_region": decoded_info.get("noti_region", "Unknown"),
+                "lock_region": decoded_info.get("lock_region", "Unknown"),
+                "release_version": decoded_info.get("release_version", "Unknown"),
+                "lock_region_time": lock_region_time
+            }
+        else:
+            player_info = {
+                "nickname": "Unknown",
+                "account_id": token_data.get("real_uid", uid),
+            }
+
+        response_payload = {
+            "Developer": "Riduanul Islam",
+            "TelegramBot": "https://t.me/AutoGenNarutoSpinOB55BOT",
+            "TelegramChannel": "https://t.me/RiduanOfficialBD",
+            "PlayerInfo": player_info,
+            "AuthInfo": {
+                "OpenID": token_data.get("open_id"),
+                "AccessToken": token_data.get("access_token")
+            },
+            "TokenStatus": {
+                "Expiration_Time": expire_time,
+                "Generation_Time": token_data.get("time")
+            },
+            "JWT_Token": jwt_token
+        }
+
+        return make_json_response(response_payload, 200)
+    except Exception as e:
+        return make_json_response({
+            "status": "error",
+            "error": f"Failed to generate token: {str(e)}"
+        }, 500)
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8789))
-    print(f"✅ TUFAN JWT API running on port {port}")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=5002, debug=False)
